@@ -7,6 +7,7 @@ parameters:
     env(GITHUB_TOKEN): null
     github_token: '%env(GITHUB_TOKEN)%'
     repository: '%root_directory%/.git'
+    split_tool: 'git'
 
 services:
     _defaults:

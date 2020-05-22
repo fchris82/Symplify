@@ -4,6 +4,7 @@ namespace Symplify\MonorepoBuilder\Split\Process;
 
 use Nette\Utils\FileSystem;
 use Nette\Utils\Strings;
+use someNamespaceA\NamespacedClass;
 use Symfony\Component\Process\Process;
 use Symplify\MonorepoBuilder\Split\Configuration\RepositoryGuard;
 
@@ -29,20 +30,28 @@ final class ProcessFactory
      */
     private $repositoryGuard;
 
+    /**
+     * @var string
+     */
+    private $gitSplitTool;
+
     public function __construct(
         RepositoryGuard $repositoryGuard,
         string $subsplitCacheDirectory,
-        string $repository
+        string $repository,
+        string $gitSplitTool
     ) {
         $this->repositoryGuard = $repositoryGuard;
         $this->subsplitCacheDirectory = $subsplitCacheDirectory;
         $this->repository = $repository;
+        $this->gitSplitTool = $gitSplitTool;
     }
 
     public function createSubsplit(
         ?string $theMostRecentTag,
         string $directory,
-        string $remoteRepository
+        string $remoteRepository,
+        string $branch = 'master'
     ): Process {
         $this->repositoryGuard->ensureIsRepository($remoteRepository);
 
@@ -50,9 +59,10 @@ final class ProcessFactory
             realpath(self::SUBSPLIT_BASH_FILE),
             sprintf('--from-directory=%s', $directory),
             sprintf('--to-repository=%s', $remoteRepository),
-            '--branch=master',
+            sprintf('--branch=%s', $branch),
             $theMostRecentTag ? sprintf('--tag=%s', $theMostRecentTag) : '',
             sprintf('--repository=%s', $this->repository),
+            sprintf('--tool=%s', $this->gitSplitTool)
         ];
 
         return $this->createProcessFromCommandLine($commandLine, $directory);

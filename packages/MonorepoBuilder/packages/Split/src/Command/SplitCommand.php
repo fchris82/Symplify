@@ -66,6 +66,13 @@ final class SplitCommand extends Command
             InputOption::VALUE_REQUIRED,
             'Maximum number of processes to run in parallel'
         );
+        $this->addOption(
+            'branch',
+            null,
+            InputOption::VALUE_OPTIONAL,
+            'Branch name what you want to split',
+            'master'
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -75,7 +82,8 @@ final class SplitCommand extends Command
         $this->packageToRepositorySplitter->splitDirectoriesToRepositories(
             $this->directoriesToRepositories,
             $this->rootDirectory,
-            $input->getOption('max-processes') ? intval($input->getOption('max-processes')) : null
+            $input->getOption('max-processes') ? intval($input->getOption('max-processes')) : null,
+            $input->getOption('branch')
         );
 
         return ShellCode::SUCCESS;

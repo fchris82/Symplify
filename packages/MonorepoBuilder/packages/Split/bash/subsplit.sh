@@ -12,16 +12,17 @@
 # - https://github.com/dflydev/git-subsplit/pull/30/files
 
 OPTS_SPEC="\
-subsplit.sh --from-directory=<from-directory> --to-repository=<to-repository> --repository=<repository> --branch=<branch> --tag=<tag>
+subsplit.sh --from-directory=<from-directory> --to-repository=<to-repository> --repository=<repository> --branch=<branch> --tag=<tag> --tool=<split-tool>
 
 For example:
-subsplit.sh --from-directory=packages/MonorepoBuilder --to-repository=git@github.com:Symplify/MonorepoBuilder.git --branch=master --tag=v5.0
+subsplit.sh --from-directory=packages/MonorepoBuilder --to-repository=git@github.com:Symplify/MonorepoBuilder.git --branch=master --tag=v5.0 --tool=git
 --
 from-directory=   directory with the package to split, e.g. '--from-directory=packages/MonorepoBuilder'
 to-repository=    repository to split into, e.g. '--to-repository=git@github.com:Symplify/MonorepoBuilder.git'
 repository=       repository to split from, e.g. '--repository=.git' for current one
 branch=           branch to publish, e.g '--branch=master'
 tag=              tag to publish, e.g. '--tag=v5.0'
+tool=             if you have installed splitsh, you can use it instead of 'git subtree split' command, e.g. '--tool=splitsh'
 h,help            show the help
 "
 
@@ -47,6 +48,7 @@ BRANCH=
 TAG=
 DRY_RUN=
 GITHUB_TOKEN=
+TOOL='git'
 
 function main()
 {
@@ -80,6 +82,7 @@ function processCommandLine()
             --repository) REPOSITORY="$1"; shift ;;
             --branch) BRANCH="$1"; shift ;;
             --tag) TAG="$1"; shift ;;
+            --tool) TOOL="$1"; shift ;;
             --) break ;;
             *) die "Unexpected option: '$opt'" ;;
         esac
@@ -112,6 +115,14 @@ function publish()
     split_tag
 }
 
+function do_split()
+{
+    case "$TOOL" in
+        git) git subtree split -q --prefix="$FROM_DIRECTORY" --branch="${1}" "${2}" ;;
+        *) git $TOOL --prefix="$FROM_DIRECTORY" --branch="${1}" --target="${2}" ;;
+    esac
+}
+
 function split_branch()
 {
     if [ -n "$BRANCH" ]
@@ -121,7 +132,7 @@ function split_branch()
         echo " - syncing branch '${BRANCH}'"
 
         git checkout -b "${LOCAL_BRANCH}-checkout" "${BRANCH}" >/dev/null 2>&1 || die "Failed while git checkout branch '${BRANCH}'"
-        git subtree split -q --prefix="$FROM_DIRECTORY" --branch="$LOCAL_BRANCH" "${BRANCH}" >/dev/null || die "Failed while git subtree split for '${BRANCH}'"
+        do_split "$LOCAL_BRANCH" "$BRANCH" >/dev/null || die "Failed while git subtree split for '${BRANCH}'"
 
         git push -q --force origin ${LOCAL_BRANCH}:${BRANCH} || die "Failed pushing branch to remote repo"
 
@@ -145,7 +156,7 @@ function split_tag()
             echo " - directory '${FROM_DIRECTORY}' is not yet present in tag '${TAG}' [SKIP]"
             continue
         else
-            git subtree split -q --prefix="$FROM_DIRECTORY" --branch="$LOCAL_TAG" "$TAG" >/dev/null || die "Failed while git subtree split for '${TAG}'"
+            do_split "$LOCAL_TAG" "$TAG" >/dev/null || die "Failed while git subtree split for '${TAG}'"
             git push -q --force origin ${LOCAL_TAG}:refs/tags/${TAG} || die "Failed pushing tag to remote repo"
 
             echo " - subtree split for '${TAG}' [DONE]"
